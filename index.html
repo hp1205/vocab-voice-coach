@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vocabulary Voice Coach</title>
+<style>
+:root{
+  --ds-page:#faf8f6; --ds-ink:#1f1c1a; --ds-ink-2:#6f6a64; --ds-hairline:#e3ded9;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--ds-page);color:var(--ds-ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:24px 16px 48px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.vc-topbar{display:flex;align-items:center;gap:12px}
+.vc-progress{flex:1;height:6px;border-radius:3px;background:var(--ds-hairline);overflow:hidden}
+.vc-progress-fill{height:100%;border-radius:3px;background:var(--ds-ink);transition:width 240ms ease;width:0}
+.vc-sound{border:1px solid var(--ds-hairline);background:transparent;color:var(--ds-ink-2);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;min-height:32px;cursor:pointer}
+.vc-hero{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.vc-kicker{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--ds-ink-2)}
+.vc-h2{margin:0;font-size:24px;line-height:1.25}
+.vc-sub{margin:0;font-size:15px;line-height:1.5;color:var(--ds-ink-2)}
+.vc-btn{appearance:none;border:1px solid var(--ds-hairline);background:transparent;color:var(--ds-ink);border-radius:12px;padding:12px 18px;font:inherit;font-size:15px;font-weight:600;min-height:48px;cursor:pointer}
+.vc-btn:active{transform:translateY(1px)}
+.vc-primary{background:var(--ds-ink);color:var(--ds-page);border-color:var(--ds-ink)}
+.vc-actions{display:flex;flex-wrap:wrap;gap:10px}
+.vc-word-card{border:1px solid var(--ds-hairline);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.vc-count{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--ds-ink-2)}
+.vc-word{margin:0;font-size:34px;line-height:1.15;font-weight:700}
+.vc-pron{margin:0;font-size:14px;color:var(--ds-ink-2);font-style:italic}
+.vc-meaning{margin:0;font-size:17px;line-height:1.45}
+.vc-example{margin:0;font-size:15px;line-height:1.5;color:var(--ds-ink-2)}
+.vc-center{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.vc-prompt{margin:0;font-size:15px;color:var(--ds-ink-2)}
+.vc-say{margin:0;font-size:30px;font-weight:700}
+.vc-mic{width:72px;height:72px;border-radius:50%;border:none;background:var(--ds-ink);color:var(--ds-page);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.vc-mic.small{width:52px;height:52px}
+.vc-mic.is-listening{animation:vc-pulse 1.2s ease-in-out infinite}
+@keyframes vc-pulse{0%,100%{box-shadow:0 0 0 0 rgba(128,128,128,.45)}50%{box-shadow:0 0 0 14px rgba(128,128,128,0)}}
+.vc-transcript{margin:0;font-size:14px;color:var(--ds-ink-2);font-style:italic}
+.vc-note{margin:0;font-size:14px;line-height:1.45;color:var(--ds-ink-2)}
+.vc-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media (max-width:360px){.vc-options{grid-template-columns:1fr}}
+.vc-option{appearance:none;border:1px solid var(--ds-hairline);background:transparent;color:var(--ds-ink);border-radius:12px;padding:14px;font:inherit;font-size:16px;font-weight:600;min-height:52px;cursor:pointer}
+.vc-option:active{transform:translateY(1px)}
+.vc-microw{display:flex;align-items:center;gap:12px}
+.vc-feedback{border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.45;max-width:420px}
+.vc-feedback.good{border:1px solid var(--ds-hairline)}
+.vc-feedback.bad{border:1px dashed var(--ds-hairline)}
+.vc-score{margin:0;font-size:40px;font-weight:700}
+footer{margin-top:32px;border-top:1px solid var(--ds-hairline);padding-top:16px}
+footer h2{font-size:16px;margin:0 0 8px}
+footer p{margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ds-ink-2)}
+footer ol{margin:0 0 10px;padding-left:20px;font-size:14px;line-height:1.6;color:var(--ds-ink-2)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 style="margin:0 0 4px;font-size:22px">Vocabulary Voice Coach</h1>
+    <p class="vc-sub">A simple working prototype of a voice agent that helps people learn vocabulary: the coach speaks each word, you repeat it aloud, and a quiz checks the meaning. No sign-up, nothing stored.</p>
+  </header>
+
+  <section class="vc" aria-label="Vocabulary voice coach">
+    <div class="vc-topbar">
+      <div class="vc-progress" aria-hidden="true"><div class="vc-progress-fill" id="progressFill"></div></div>
+      <button type="button" class="vc-sound" id="soundBtn" hidden>Sound on</button>
+    </div>
+
+    <div id="stage"></div>
+  </section>
+
+  <footer>
+    <h2>How it works</h2>
+    <ol>
+      <li>Speak - the coach reads each word, its meaning and an example aloud using the browser's speech synthesis.</li>
+      <li>Repeat - you say the word back, and the browser's speech recognition checks whether it heard the right word. Tapping works too.</li>
+      <li>Quiz - you say or tap the word that matches a meaning, and the coach keeps score across the deck.</li>
+    </ol>
+    <h2>Honest limits</h2>
+    <p>This is a front-end prototype. It uses the Web Speech API with rule-based lesson logic. It is not connected to a large language model, so it cannot hold a free-form conversation yet. Voice input needs a browser with speech recognition (Safari on iPhone, Chrome or Edge on Android or a computer; Brave does not include it) and a tap on the microphone button to allow mic access. Every step also works with taps. When voice input is active, speech is processed by the browser's speech recognition service (for example Apple's in Safari or Google's in Chrome), which may send that audio to the provider. This page itself records, stores and sends nothing.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+var WORDS=[
+ {word:'adept',pos:'adjective',pron:'uh-DEPT',meaning:'very skilled at something',example:'She is adept at calming upset customers.'},
+ {word:'concise',pos:'adjective',pron:'kun-SISE',meaning:'saying a lot in a few words',example:'Keep your status updates concise in the meeting.'},
+ {word:'initiative',pos:'noun',pron:'in-ISH-uh-tiv',meaning:'the ability to start things on your own',example:'He took the initiative to fix the broken process.'},
+ {word:'pragmatic',pos:'adjective',pron:'prag-MAT-ik',meaning:'practical and focused on what works',example:'We need a pragmatic plan, not a perfect one.'},
+ {word:'articulate',pos:'verb',pron:'ar-TIK-yuh-late',meaning:"to express thoughts clearly in words",example:"She articulated the team's concerns to the manager."},
+ {word:'meticulous',pos:'adjective',pron:'muh-TIK-yuh-lus',meaning:'very careful about small details',example:'A meticulous review caught the billing error.'},
+ {word:'resilient',pos:'adjective',pron:'ri-ZIL-yunt',meaning:'able to recover quickly from setbacks',example:'Resilient teams adapt after a failed launch.'},
+ {word:'versatile',pos:'adjective',pron:'VUR-suh-tl',meaning:'useful in many different ways',example:'Spreadsheets are a versatile tool for operations work.'}
+];
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+var ttsAvailable='speechSynthesis' in window;
+
+var stage=document.getElementById('stage');
+var progressFill=document.getElementById('progressFill');
+var soundBtn=document.getElementById('soundBtn');
+
+var phase='ready', index=0, score=0, repeats=0, attempts=0, repeatDone=false;
+var listening=false, ttsOn=true, rec=null, micNoteText='';
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function normalize(s){return s.toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();}
+function heardWord(t,w){return (' '+normalize(t)+' ').indexOf(' '+w.toLowerCase()+' ')>-1;}
+function quizOptions(i){
+  var target=WORDS[i].word;
+  var others=WORDS.map(function(w){return w.word;}).filter(function(w){return w!==target;});
+  var picked=[others[(i*3)%others.length],others[(i*3+2)%others.length],others[(i*3+4)%others.length]];
+  var all=[target].concat(picked);
+  var rot=i%all.length;
+  return all.map(function(_,k){return all[(k+rot)%all.length];});
+}
+function speak(text){
+  if(!ttsOn||!ttsAvailable)return;
+  try{
+    window.speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(text);
+    u.lang='en-IN';u.rate=1;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+function micIcon(){return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>';}
+
+function setProgress(){
+  var order=['ready','teach','repeat','repeatResult','quiz','quizResult','done'];
+  var step=Math.max(0,order.indexOf(phase));
+  var pct=Math.min(100,((index*4+step)/ (WORDS.length*4))*100);
+  progressFill.style.width=pct+'%';
+}
+
+function render(){
+  setProgress();
+  soundBtn.hidden=(phase==='ready');
+  soundBtn.textContent=ttsOn?'Sound on':'Sound off';
+  var w=WORDS[index], html='';
+  if(phase==='ready'){
+    html='<div class="vc-hero">'
+      +'<p class="vc-kicker">Voice lesson - '+WORDS.length+' words - about 3 minutes</p>'
+      +'<h2 class="vc-h2">Learn interview-ready words by speaking, not just reading</h2>'
+      +'<p class="vc-sub">The coach says a word and its meaning, listens while you repeat it, then quizzes you. Every step also works with taps.</p>'
+      +'<button type="button" class="vc-btn vc-primary" data-act="start">Start the lesson</button>'
+      +(!SR?'<p class="vc-note">This browser has no speech recognition, so the microphone steps will offer tap answers instead.</p>':'')
+      +(!ttsAvailable?'<p class="vc-note">This browser cannot speak the prompts aloud, so read them on screen instead.</p>':'')
+      +'</div>';
+  }else if(phase==='teach'){
+    html='<div>'
+      +'<div class="vc-word-card">'
+      +'<p class="vc-count">Word '+(index+1)+' of '+WORDS.length+'</p>'
+      +'<p class="vc-word">'+esc(w.word)+'</p>'
+      +'<p class="vc-pron">'+esc(w.pos)+' - '+esc(w.pron)+'</p>'
+      +'<p class="vc-meaning">'+esc(w.meaning)+'</p>'
+      +'<p class="vc-example">"'+esc(w.example)+'"</p>'
+      +'</div>'
+      +'<div class="vc-actions">'
+      +'<button type="button" class="vc-btn vc-primary" data-act="practice">Practice saying it</button>'
+      +'<button type="button" class="vc-btn" data-act="hear">Hear it again</button>'
+      +'</div></div>';
+  }else if(phase==='repeat'){
+    html='<div class="vc-center">'
+      +'<p class="vc-prompt">Tap the microphone and say:</p>'
+      +'<p class="vc-say">'+esc(w.word)+'</p>'
+      +'<button type="button" class="vc-mic'+(listening?' is-listening':'')+'" data-act="mic-repeat" aria-label="Say the word">'+micIcon()+'</button>'
+      +'<p class="vc-transcript" id="interim"></p>'
+      +'<p class="vc-note" id="micnote">'+esc(micNoteText)+'</p>'
+      +'<button type="button" class="vc-btn" data-act="skip-quiz">Skip to the quiz</button>'
+      +'</div>';
+  }else if(phase==='repeatResult'){
+    html='<div class="vc-center">'
+      +'<div class="vc-feedback '+(window._fbOk?'good':'bad')+'">'+esc(window._fbText||'')+'</div>'
+      +'<div class="vc-actions">'
+      +(repeatDone
+        ?'<button type="button" class="vc-btn vc-primary" data-act="to-quiz">Try the quiz</button>'
+        :'<button type="button" class="vc-btn vc-primary" data-act="retry-repeat">Try again</button>')
+      +'</div></div>';
+  }else if(phase==='quiz'){
+    var opts=quizOptions(index);
+    html='<div>'
+      +'<div class="vc-word-card">'
+      +'<p class="vc-count">Quiz - word '+(index+1)+' of '+WORDS.length+'</p>'
+      +'<p class="vc-meaning">Which word means: '+esc(w.meaning)+'?</p>'
+      +'</div>'
+      +'<div class="vc-options">'
+      +opts.map(function(o){return '<button type="button" class="vc-option" data-act="answer" data-word="'+esc(o)+'">'+esc(o)+'</button>';}).join('')
+      +'</div>'
+      +'<div class="vc-microw">'
+      +'<button type="button" class="vc-mic small'+(listening?' is-listening':'')+'" data-act="mic-quiz" aria-label="Say the answer">'+micIcon()+'</button>'
+      +'<p class="vc-note">or say the answer</p>'
+      +'</div>'
+      +'<p class="vc-transcript" id="interim"></p>'
+      +'<p class="vc-note" id="micnote">'+esc(micNoteText)+'</p>'
+      +'</div>';
+  }else if(phase==='quizResult'){
+    var last=(index===WORDS.length-1);
+    html='<div class="vc-center">'
+      +'<div class="vc-feedback '+(window._fbOk?'good':'bad')+'">'+esc(window._fbText||'')+'</div>'
+      +'<button type="button" class="vc-btn vc-primary" data-act="'+(last?'finish':'next')+'">'+(last?'See my score':'Next word')+'</button>'
+      +'</div>';
+  }else if(phase==='done'){
+    html='<div class="vc-center">'
+      +'<p class="vc-score">'+score+' / '+WORDS.length+'</p>'
+      +'<p class="vc-sub">quiz answers correct'+(repeats>0?' - you pronounced '+repeats+' of '+WORDS.length+' words clearly':'')+'</p>'
+      +'<button type="button" class="vc-btn vc-primary" data-act="restart">Practice again</button>'
+      +'</div>';
+  }
+  stage.innerHTML=html;
+}
+
+function note(msg){micNoteText=msg;var n=document.getElementById('micnote');if(n)n.textContent=msg;}
+function interim(msg){var n=document.getElementById('interim');if(n)n.textContent=msg;}
+
+function teachWord(i){
+  index=i;attempts=0;repeatDone=false;micNoteText='';phase='teach';render();
+  var w=WORDS[i];
+  var welcome=i===0?('Hi, I am your vocabulary coach. We will practise '+WORDS.length+' useful workplace words. I will say each word, you repeat it, and then I will quiz you. '):'';
+  speak(welcome+'Word '+(i+1)+' of '+WORDS.length+'. '+w.word+'. It means: '+w.meaning+'. For example: '+w.example+'.');
+}
+function hearAgain(){var w=WORDS[index];speak(w.word+'. It means: '+w.meaning+'. For example: '+w.example+'.');}
+function beginRepeat(){
+  micNoteText='';phase='repeat';render();
+  speak('Your turn. Tap the microphone and say: '+WORDS[index].word+'.');
+}
+function toQuiz(){
+  micNoteText='';phase='quiz';render();
+  speak('Quiz time. Which word means: '+WORDS[index].meaning+'?');
+}
+function evaluate(mode,text){
+  var w=WORDS[index];
+  if(mode==='repeat'){
+    if(heardWord(text,w.word)){
+      repeats++;repeatDone=true;
+      window._fbOk=true;window._fbText='I heard "'+w.word+'" - nicely said.';
+      phase='repeatResult';render();speak('Well done, that sounded right.');
+    }else{
+      attempts++;
+      if(attempts<2){
+        window._fbOk=false;window._fbText='Not quite - try once more: "'+w.word+'".';
+        phase='repeatResult';render();speak('Try once more. Say: '+w.word+'.');
+      }else{
+        repeatDone=true;
+        window._fbOk=false;window._fbText='No problem - the word is "'+w.word+'" ('+w.pron+').';
+        phase='repeatResult';render();speak('The word is '+w.word+'.');
+      }
+    }
+  }else{
+    var opts=quizOptions(index);
+    var found=null;
+    for(var k=0;k<opts.length;k++){if(heardWord(text,opts[k])){found=opts[k];break;}}
+    if(found){answerQuiz(found);}
+    else{note('I heard "'+normalize(text)+'", which does not match an option. Tap your answer, or try saying it again.');}
+  }
+}
+function answerQuiz(answer){
+  var w=WORDS[index];
+  var correct=(answer===w.word);
+  if(correct)score++;
+  window._fbOk=correct;
+  window._fbText=correct?('Correct - "'+w.word+'" means '+w.meaning+'.'):('The answer was "'+w.word+'" - it means '+w.meaning+'.');
+  phase='quizResult';render();
+  speak(correct?'Correct.':('The answer was '+w.word+'.'));
+}
+function stopRec(){try{if(rec)rec.stop();}catch(e){}}
+
+function startListening(mode){
+  if(!SR){note('Speech recognition is not available in this browser. You can still tap an answer.');return;}
+  if(listening){stopRec();return;}
+  if(ttsAvailable){try{window.speechSynthesis.cancel();}catch(e){}}
+  note('');interim('');
+  try{rec=new SR();}catch(e){note('Could not start the microphone. You can tap an answer instead.');return;}
+  rec.lang='en-IN';rec.interimResults=true;rec.maxAlternatives=3;
+  var finals=[];
+  rec.onstart=function(){listening=true;render();};
+  rec.onresult=function(ev){
+    var interimText='';
+    for(var i=ev.resultIndex;i<ev.results.length;i++){
+      var r=ev.results[i];
+      if(r.isFinal){finals.push(r[0].transcript);}
+      else{interimText+=r[0].transcript;}
+    }
+    if(interimText)interim('Hearing: '+interimText);
+    if(finals.length){
+      var text=finals.join(' ');
+      finals=[];
+      stopRec();
+      evaluate(mode,text);
+    }
+  };
+  rec.onerror=function(ev){
+    listening=false;
+    var err=ev&&ev.error?ev.error:'';
+    var msg;
+    if(err==='not-allowed'||err==='service-not-allowed'){
+      msg='Microphone access was not allowed. Check the browser permission for this site, or tap an answer instead.';
+    }else if(err==='no-speech'){
+      msg='I did not hear anything. Tap the microphone and try again, or tap an answer.';
+    }else if(err==='network'){
+      msg='The speech service could not be reached. You can tap an answer instead.';
+    }else if(err==='audio-capture'){
+      msg='No microphone was found. You can tap an answer instead.';
+    }else{
+      msg='The microphone stopped'+(': '+err)+'. You can tap an answer instead.';
+    }
+    render();note(msg);
+  };
+  rec.onend=function(){listening=false;if(phase==='repeat'||phase==='quiz')render();};
+  try{rec.start();}catch(e){note('Could not start the microphone. You can tap an answer instead.');}
+}
+
+stage.addEventListener('click',function(ev){
+  var el=ev.target.closest('[data-act]');
+  if(!el)return;
+  var act=el.getAttribute('data-act');
+  if(act==='start')teachWord(0);
+  else if(act==='practice')beginRepeat();
+  else if(act==='hear')hearAgain();
+  else if(act==='skip-quiz')toQuiz();
+  else if(act==='retry-repeat')beginRepeat();
+  else if(act==='to-quiz')toQuiz();
+  else if(act==='answer')answerQuiz(el.getAttribute('data-word'));
+  else if(act==='next')teachWord(index+1);
+  else if(act==='finish'){phase='done';render();speak('Lesson complete. You scored '+score+' out of '+WORDS.length+'.');}
+  else if(act==='restart'){score=0;repeats=0;teachWord(0);}
+  else if(act==='mic-repeat')startListening('repeat');
+  else if(act==='mic-quiz')startListening('quiz');
+});
+soundBtn.addEventListener('click',function(){
+  ttsOn=!ttsOn;
+  if(!ttsOn&&ttsAvailable){try{window.speechSynthesis.cancel();}catch(e){}}
+  render();
+});
+
+render();
+})();
+</script>
+</body>
+</html>
