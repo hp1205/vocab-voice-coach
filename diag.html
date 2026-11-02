@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mic check - Vocabulary Voice Coach</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#faf8f6;color:#1f1c1a;margin:0;padding:24px 16px 48px}
+.wrap{max-width:560px;margin:0 auto}
+h1{font-size:20px;margin:0 0 6px}
+p.sub{color:#6f6a64;font-size:14px;margin:0 0 18px}
+button{appearance:none;border:1px solid #e3ded9;background:#1f1c1a;color:#faf8f6;border-radius:12px;padding:12px 18px;font:inherit;font-size:15px;font-weight:600;min-height:48px;cursor:pointer;width:100%;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:8px 6px;border-bottom:1px solid #e3ded9;vertical-align:top}
+td:first-child{color:#6f6a64;width:46%}
+.ok{color:#146c2e;font-weight:600}
+.bad{color:#a33b2e;font-weight:600}
+#log{margin-top:14px;font-size:13px;color:#6f6a64;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Microphone check</h1>
+<p class="sub">Tap the button, then allow microphone access if the browser asks. Send a screenshot of this page - it shows exactly which layer allows or blocks the mic. Nothing is recorded or sent anywhere.</p>
+<button id="go" type="button">Run the check</button>
+<table id="results"></table>
+<div id="log"></div>
+</div>
+<script>
+(function(){
+var rows=[];
+function row(k,v,ok){rows.push({k:k,v:v,ok:ok});draw();}
+function draw(){
+  document.getElementById('results').innerHTML=rows.map(function(r){
+    return '<tr><td>'+r.k+'</td><td class="'+(r.ok===true?'ok':r.ok===false?'bad':'')+'">'+r.v+'</td></tr>';
+  }).join('');
+}
+function log(m){document.getElementById('log').textContent+=m+'\n';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+
+document.getElementById('go').addEventListener('click',function(){
+  rows=[];log('');
+  row('Secure context (HTTPS)', window.isSecureContext?'yes':'NO', window.isSecureContext===true);
+  row('Browser', esc(navigator.userAgent.slice(0,90)));
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+  row('Speech recognition API exists', SR?'yes':'NO', !!SR);
+  var p=(navigator.permissions&&navigator.permissions.query)?navigator.permissions.query({name:'microphone'}).then(function(s){return s.state;}).catch(function(e){return 'query failed: '+e.message;}):Promise.resolve('Permissions API missing');
+  p.then(function(state){
+    row('Mic permission state', esc(state), state==='granted'?true:(state==='denied'?false:null));
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){row('getUserMedia','NOT AVAILABLE',false);return null;}
+    return navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+      var tracks=stream.getAudioTracks();
+      row('Raw microphone (getUserMedia)','OPENED - '+tracks.length+' track'+(tracks.length===1?'':'s')+(tracks[0]?': '+esc(tracks[0].label||'unlabeled'):''),true);
+      try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+      return true;
+    }).catch(function(e){
+      row('Raw microphone (getUserMedia)','FAILED - '+(e&&e.name?e.name:'Error')+(e&&e.message?': '+esc(e.message):''),false);
+      return false;
+    });
+  }).then(function(gumOk){
+    if(gumOk===null)return;
+    if(!SR)return;
+    if(gumOk===false){row('Speech recognition test','skipped - raw mic already blocked',null);return;}
+    log('Starting speech recognition...');
+    var rec;
+    try{rec=new SR();}catch(e){row('Speech recognition test','constructor threw: '+e.message,false);return;}
+    rec.lang='en-IN';rec.interimResults=false;rec.maxAlternatives=1;
+    var done=false;
+    rec.onstart=function(){log('event: start (listening, say something)');};
+    rec.onaudiostart=function(){log('event: audiostart (audio is flowing)');};
+    rec.onspeechstart=function(){log('event: speechstart (heard speech)');};
+    rec.onresult=function(ev){done=true;row('Speech recognition test','HEARD: "'+esc(ev.results[0][0].transcript)+'"',true);};
+    rec.onerror=function(ev){done=true;row('Speech recognition test','FAILED - code: '+esc(ev.error||'?')+(ev.message?': '+esc(ev.message):''),false);};
+    rec.onend=function(){log('event: end');if(!done){row('Speech recognition test','ended with no result and no error',null);}};
+    try{rec.start();}catch(e){row('Speech recognition test','start() threw: '+e.message,false);}
+  });
+});
+})();
+</script>
+</body>
+</html>
